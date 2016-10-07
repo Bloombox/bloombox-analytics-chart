@@ -1,0 +1,35 @@
+{
+  "name": "bloombox-analytics-chart",
+  "description": "Charts data from Bloombox analytics streams",
+  "version": "0.0.1",
+  "private": true,
+  "authors": [
+    "Sam Gammon <sam@momentum.io>"
+  ],
+  "keywords": [
+    "web-components",
+    "polymer",
+    "bloombox"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "ssh://git@github.com:bloombox/bloombox-analytics-chart.git"
+  },
+  "license": "Private, All Rights Reserved",
+  "homepage": "https://github.com/bloombox/bloombox-analytics-chart",
+  "main": "bloombox-analytics-chart.html",
+  "dependencies": {
+    "polymer": "Polymer/polymer#^1.5.0",
+    "bloombox-styles": "git@github.com:bloombox/bloombox-styles.git#master",
+    "keen-js": "^3.4.1"
+  },
+  "devDependencies": {
+    "iron-component-page": "PolymerElements/iron-component-page#^1.0.0",
+    "iron-demo-helpers": "PolymerElements/iron-demo-helpers#^1.0.0",
+    "web-component-tester": "^4.0.0",
+    "webcomponentsjs": "webcomponents/webcomponentsjs#^0.7.0"
+  },
+  "resolutions": {
+    "paper-radio-group": "master"
+  }
+}

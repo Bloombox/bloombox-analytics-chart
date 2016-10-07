@@ -1,0 +1,175 @@
+
+<!--
+`<bloombox-analytics-chart>` provides chart UI that visualizes
+data from Bloombox analytics streams.
+
+@group Bloombox Elements
+@element bloombox-analytics-chart
+@demo demo/index.html
+@homepage bloombox.github.io
+-->
+
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../bloombox-styles/bloombox-styles.html">
+
+<script type="text/javascript" src="../keen-js/keen-query.min.js"></script>
+
+
+<dom-module id="bloombox-analytics-chart">
+  <template strip-whitespace>
+    <style is="custom-style" include="bloombox-styles">
+      :host {
+        display: block;
+      }
+
+      :host main {
+        background: blue;
+
+        min-width: var(--bloombox-chart-width, 400);
+        min-height: var(--bloombox-chart-height, 300);
+      }
+    </style>
+
+    <main>
+      <b>hi</b>
+    </main>
+  </template>
+
+  <script>
+    var BloomboxAnalyticsChart = Polymer.BloomboxAnalyticsChart = Polymer({
+      is: "bloombox-analytics-chart",
+
+      properties: {
+        /**
+         * Data environment that we are operating under. Defaults
+         * to the `sandbox`.
+         */
+        environment: {
+          type: String,
+          notify: false,
+          value: "sandbox",
+          reflectToAttribute: true
+        },
+
+        /**
+         * Partner account ID that we are visualizing data for.
+         */
+        partner: {
+          type: String,
+          notify: false,
+          reflectToAttribute: true
+        },
+
+        /**
+         * Partner location ID that we are visualizing data for, if
+         * filters so restrict the current user-desired query.
+         */
+        location: {
+          type: String,
+          notify: false,
+          reflectToAttribute: true
+        },
+
+        /**
+         * Keen collection that we should be visualizing data from.
+         */
+        collection: {
+          type: String,
+          notify: false,
+          value: "screens",
+          reflectToAttribute: true
+        },
+
+        /**
+         * Read-scoped API key to use for interactions with the Keen
+         * Event Analysis API.
+         */
+        readKey: {
+          type: String,
+          notify: false,
+          reflectToAttribute: true
+        },
+
+        /**
+         * Type of chart to use/display via this widget. Valid options
+         * include:
+         * - `bar`: For a bar chart, usually x-indexed by value
+         * - `column`: For a column chart, usually x-indexed by time
+         * - `pie`: For a percentage/zero-sum-style chart
+         * - `calendar`: GitHub contribution-calendar-style viz
+         */
+        chartType: {
+          type: String,
+          notify: false,
+          value: "column",
+          reflectToAttribute: true
+        },
+
+        /**
+         * Type of analysis to perform when querying for data. Defaults
+         * to a simple global non-unique count of collection events.
+         * Valid options are provided by KeenJS:
+         * - `count`: Count items without unique-ifying
+         * - `count_unique`: Count unique items by property
+         * - `sum`: Add together many values inside events
+         * - `minimum`: Find the minimum value out of many inside events
+         * - `maximum`: Find the maximum value out of many inside events
+         * - `average`: Average a number across many event values
+         * - `percentile`: Calculate an N-percentile across many events
+         * - `median`: Calculate a median across many events
+         */
+        analysisType: {
+          type: String,
+          notify: false,
+          value: "count",
+          reflectToAttribute: true
+        },
+
+        /**
+         * Kind of event data to display in this chart. Valid options
+         * include:
+         * - `sections`: Data about section usage inside the app.
+         * - `products`: Data about actual products inside the app.
+         * - `locations`: Data about individual partner locations.
+         */
+        dataType: {
+          type: String,
+          notify: false,
+          value: "sections",
+          reflectToAttribute: true
+        },
+
+        /**
+         * Property to group events by, producing a value according to
+         * `analysisType` after combining like events that have a
+         * matching value for the property named by `groupBy`.
+         */
+        groupBy: {
+          type: String,
+          notify: false,
+          reflectToAttribute: true
+        },
+
+        /**
+         * Specifies the named timeframe for which the user would like
+         * to view analytics data. These are predefined time windows,
+         * except in the case of `custom` mode. Valid options include:
+         * - `1h`: last 60 minutes
+         * - `6h`: last 6 hours
+         * - `12h`: last 12 hours
+         * - `1d`: last 24 hours
+         * - `3d`: last 72 hours
+         * - `1w`: last week
+         * - `1m`: last month
+         * - `1y`: last year
+         */
+        timeframe: {
+          type: String,
+          notify: false,
+          value: "1d",
+          reflectToAttribute: true
+        }
+      }
+    });
+  </script>
+</dom-module>
