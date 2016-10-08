@@ -11,6 +11,8 @@
 
     <link rel="import" href="../bloombox-analytics-chart.html">
 
+    <link rel="stylesheet" href="lib/d3.tip.css">
+
     <style is="custom-style" include="demo-pages-shared-styles">
       .vertical-section-container.centered {
         max-width: 700px !important;
@@ -18,6 +20,7 @@
     </style>
 
     <script type="text/javascript" src="lib/d3.min.js"></script>
+    <script type="text/javascript" src="lib/d3.tip.js"></script>
   </head>
   <body>
     <div class="vertical-section-container centered">
@@ -33,9 +36,8 @@
             analysis-type="count"
             data-type="sections"
             group-by="name"
-            timeframe="1d"
-            partner="abatin"
-            environment="v1"
+            timeframe="1_day"
+            project-id="57a940b0c9e1631bb251f04e"
             read-key="cca030306a28118534013d0ab0a47d7d4631076872d7e6542fd63f7e765fc4c6b8475c235b103fb3255af3623cdb64fbeadf783d6b3bfe25989fa6d078de8ef96b0f7e7b88c6a6204b9176ddf1a5be0feff6569598b9789515435bf03703cb38"></bloombox-analytics-chart>
         </template>
       </demo-snippet>
