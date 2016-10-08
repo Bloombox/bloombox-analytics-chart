@@ -25,8 +25,8 @@ data from Bloombox analytics streams.
       :host main {
         background: blue;
 
-        min-width: var(--bloombox-chart-width, 400);
-        min-height: var(--bloombox-chart-height, 300);
+        width: var(--bloombox-chart-width, 400px);
+        min-height: var(--bloombox-chart-min-height, 200px);
       }
     </style>
 
@@ -39,7 +39,72 @@ data from Bloombox analytics streams.
     var BloomboxAnalyticsChart = Polymer.BloomboxAnalyticsChart = Polymer({
       is: "bloombox-analytics-chart",
 
+      observers: [
+        "_queryShouldChange(_booted, _client, environment, partner, location, collection, readKey, analysisType, dataType, groupBy, timeframe, timeframeMode, timezone, interval, filters)",
+        "_queryDidChange(_client, _query)"
+      ],
+
       properties: {
+        /**
+         * Whether or not this chart has "booted up" yet, in
+         * terms of receiving and executing an initial query.
+         */
+        _booted: {
+          type: Boolean,
+          notify: true,
+          readOnly: true
+        },
+
+        /**
+         * Underlying `KeenClient` object that manages
+         * interaction with the Keen API.
+         */
+        _client: {
+          type: Object,
+          notify: false,
+          computed: "_buildKeenClient(projectId, environment, partner, readKey)"
+        },
+
+        /**
+         * Underlying query object that will supply this chart.
+         */
+        _query: {
+          type: Object,
+          notify: false,
+          readOnly: true,
+          reflectToAttribute: false
+        },
+
+        /**
+         * Underlying chart data, in raw form.
+         */
+        _data: {
+          type: Object,
+          notify: false,
+          readOnly: true,
+          reflectToAttribute: false,
+          observer: "_dataDidChange"
+        },
+
+        /**
+         * Underlying D3 chart object.
+         */
+        _chart: {
+          type: Object,
+          notify: false,
+          readOnly: true,
+          reflectToAttribute: false
+        },
+
+        /**
+         * Target Keen project to fetch data from.
+         */
+        projectId: {
+          type: String,
+          notify: false,
+          reflectToAttribute: false
+        },
+
         /**
          * Data environment that we are operating under. Defaults
          * to the `sandbox`.
@@ -67,6 +132,7 @@ data from Bloombox analytics streams.
         location: {
           type: String,
           notify: false,
+          value: null,
           reflectToAttribute: true
         },
 
@@ -76,7 +142,7 @@ data from Bloombox analytics streams.
         collection: {
           type: String,
           notify: false,
-          value: "screens",
+          computed: "_computeEventCollection(dataType)",
           reflectToAttribute: true
         },
 
@@ -147,6 +213,7 @@ data from Bloombox analytics streams.
         groupBy: {
           type: String,
           notify: false,
+          value: null,
           reflectToAttribute: true
         },
 
@@ -154,21 +221,174 @@ data from Bloombox analytics streams.
          * Specifies the named timeframe for which the user would like
          * to view analytics data. These are predefined time windows,
          * except in the case of `custom` mode. Valid options include:
-         * - `1h`: last 60 minutes
-         * - `6h`: last 6 hours
-         * - `12h`: last 12 hours
-         * - `1d`: last 24 hours
-         * - `3d`: last 72 hours
-         * - `1w`: last week
-         * - `1m`: last month
-         * - `1y`: last year
+         * - `1_hour`: last 60 minutes
+         * - `6_hours`: last 6 hours
+         * - `12_hours`: last 12 hours
+         * - `1_day`: last 24 hours
+         * - `3_days`: last 72 hours
+         * - `1_week`: last week
+         * - `1_month`: last month
+         * - `1_year`: last year
          */
         timeframe: {
           type: String,
           notify: false,
-          value: "1d",
+          value: "1_day",
           reflectToAttribute: true
+        },
+
+        /**
+         * Specifies the timeframe mode, either `this` or `previous`.
+         * See Keen JS documentation for more info.
+         */
+        timeframeMode: {
+          type: String,
+          notify: false,
+          value: "this",
+          reflectToAttribute: true
+        },
+
+        /**
+         * Timezone offset to apply before visualizing/interpolating
+         * the resulting event dataset.
+         */
+        timezone: {
+          type: Object,
+          notify: false,
+          value: -28800  /* defaults to Pacific Time */
+        },
+
+        /**
+         * Time interval to map data over. These values are predefined
+         * and provided by Keen JS. Some examples:
+         *
+         * ### Predefined Intervals
+         * - `minutely`
+         * - `hourly`
+         * - `daily`
+         * - `weekly`
+         * - `monthly`
+         * - `yearly`
+         *
+         * ### Custom Intervals
+         * - `every_30_minutes`
+         * - `every_8_hours`
+         * - `every_3_days`
+         * - `every_2_weeks`
+         * - `every_6_months`
+         * - `every_3_years`
+         */
+        interval: {
+          type: String,
+          notify: false,
+          value: "hourly"
+        },
+
+        /**
+         * Specifies an optional set of filters to enforce during
+         * query execution. Items matching this subquery will be
+         * rejected for inclusion in the resulting set of data.
+         */
+        filters: {
+          type: Array,
+          notify: false,
+          reflectToAttribute: true,
+          value: function() {
+            return [];
+          }
         }
+      },
+
+      /**
+       * Build a JS `KeenClient` for use with Keen's API.
+       */
+      _buildKeenClient: function(project, environment, partner, readKey) {
+        return new Keen({
+          projectId: project,
+          readKey: readKey
+        });
+      },
+
+      /**
+       * Compute the name of the event collection that we should
+       * use as our event data source.
+       */
+      _computeEventCollection: function(dataType) {
+        var lowered = dataType.toLowerCase();
+        if (lowered === "products")
+          return "products";
+        if (lowered === "locations")
+          return "locations";
+        return "screens";
+      },
+
+      /**
+       * Observer that propagates configuration changes into the
+       * underlying chart query.
+       */
+      _queryShouldChange: function(_booted, _client, environment, partner, location, collection, readKey, analysisType, dataType, groupBy, timeframe, timeframeMode, timezone, interval, filters) {
+        var timeframeFormat = [timeframeMode, timeframe].join("_"),
+            configPayload = {
+              "event_collection": collection,
+              "timeframe": timeframeFormat
+            };
+
+        if (_booted === true) {
+          if (groupBy && groupBy.length > 0)
+            configPayload["group_by"] = groupBy;
+          if (timezone && (typeof timezone === "number" || typeof timezone === "string"))
+            configPayload["timezone"] = timezone;
+          if (interval && typeof interval === "string")
+            configPayload["interval"] = interval;
+          if (filters && Array.isArray(filters) && filters.length > 0)
+            configPayload["filters"] = filters;
+          this._set_query(new Keen.Query(analysisType, configPayload));
+        }
+      },
+
+      /**
+       * Observer that applies a query/client pair to accomplish
+       * fetching our data and rendering our chart.
+       */
+      _queryDidChange: function(_client, _query) {
+        var that = this;
+        _client.run(_query, function(err, response) {
+          that._didReceiveResponse(err, response);
+        });
+      },
+
+      /**
+       * Handles an initial response from the Keen Analysis API,
+       * once a query has been run.
+       */
+      _didReceiveResponse: function(error, response) {
+        if (error) {
+          console.error("An error occurred fetching data from the Keen Analysis API.", error);
+        } else {
+          console.info("Response from Keen:", response);
+          this._set_data(response.result);
+        }
+      },
+
+      /**
+       * Responds to changes in query response data.
+       */
+      _dataDidChange: function(newData, oldData) {
+        if (!oldData) {
+          // probably loading initially
+          console.log("data did load", newData);
+        } else {
+          console.log("data did change", newData, oldData);
+        }
+      },
+
+      /**
+       * Lifecycle callback, dispatched each time this element is
+       * stamped into the DOM.
+       */
+      attached: function() {
+        if (!this._booted)
+          this._set_booted(true);
       }
     });
   </script>
