@@ -23,8 +23,6 @@ data from Bloombox analytics streams.
       }
 
       :host main {
-        background: blue;
-
         width: var(--bloombox-chart-width, 400px);
         min-height: var(--bloombox-chart-min-height, 200px);
       }
@@ -365,7 +363,6 @@ data from Bloombox analytics streams.
         if (error) {
           console.error("An error occurred fetching data from the Keen Analysis API.", error);
         } else {
-          console.info("Response from Keen:", response);
           this._set_data(response.result);
         }
       },
