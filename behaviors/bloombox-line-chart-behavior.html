@@ -60,6 +60,46 @@
       }
     },
 
+    sparklineChart: {
+      prepare: function(timeParser, timeFormatter, width, height, svg, chart, data) {
+        var margin = {top: (typeof chart.heading === "string" ? 20 : 0), right: 0, bottom: 0, left: 0},
+            width = width > 200 ? 200 : width,
+            height = height > 50 ? 50 : height,
+            width = width - margin.left - margin.right,
+            height = height - margin.top - margin.bottom,  // subtract 20px for heading
+            el = svg
+                  .append("g")
+                  .attr("width", width)
+                  .attr("height", height)
+                  .attr("transform", "translate(" + margin.left + "," + margin.top + ")"),
+            x = d3.scaleTime()
+                  .range([0, width]),
+            y = d3.scaleLinear()
+                  .range([height, 0]),
+            xAxis = d3.axisBottom()
+                      .scale(x)
+                      .tickFormat(timeFormatter()),
+            yAxis = d3.axisLeft()
+                      .scale(y),
+            line = d3.line()
+                     .curve(d3.curveBasis)
+                     .x(function(d) { return x(timeParser(d.timeframe.end)); })
+                     .y(function(d) { return y(d.value); });
+
+        // calculate domain of each axis
+        x.domain(d3.extent(data, function(d) { return timeParser(d.timeframe.start); }));
+        y.domain(d3.extent(data, function(d) { return d.value; }))
+
+        // map the sparkline
+        el.append("path")
+           .datum(data)
+           .style("fill", "none")
+           .style("stroke", "steelblue")
+           .attr("d", line);
+      }
+    },
+
+
     multilineChart: {
       prepare: function(timeParser, timeFormatter, width, height, svg, chart, data) {
         var margin = {top: (typeof chart.heading === "string" ? 25 : 10), right: 30, bottom: 20, left: 30},

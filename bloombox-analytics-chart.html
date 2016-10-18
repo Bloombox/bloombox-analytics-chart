@@ -29,8 +29,6 @@ data from Bloombox analytics streams.
       :host {
         display: flex;
         justify-content: center;
-        border: var(--bloombox-chart-border, 1px solid #dedede);
-        border-radius: var(--bloombox-chart-border-radius, 3px);
       }
 
       :host main {
@@ -39,6 +37,15 @@ data from Bloombox analytics streams.
         display: flex;
         justify-content: center;
         align-items: center;
+        border: var(--bloombox-chart-border, 1px solid #dedede);
+        border-radius: var(--bloombox-chart-border-radius, 3px);
+      }
+
+      :host main.sparkline {
+        border: none;
+        max-width: 200px;
+        max-height: 75px;
+        min-height: 75px;
       }
 
       paper-progress.chart-loading {
@@ -51,6 +58,11 @@ data from Bloombox analytics streams.
         flex-direction: column;
         justify-content: center;
         min-height: var(--bloombox-chart-min-height, 200px);
+      }
+
+      :host main.sparkline div.chart-container {
+        min-height: 0 !important;
+        height: 75px;
       }
 
       div.chart-container,
@@ -73,7 +85,7 @@ data from Bloombox analytics streams.
       }
     </style>
 
-    <main>
+    <main class$="[[chartType]]">
       <div class="loading-overlay" hidden$="[[!_loading]]">
         <paper-progress indeterminate class="chart-loading"></paper-progress>
       </div><!-- end div.loading-overlay -->
@@ -275,6 +287,7 @@ data from Bloombox analytics streams.
          * - `bar`: For a bar chart, usually x-indexed by value
          * - `line`: For a line chart, usually x-indexed by time
          * - `multiline`: Like above but a multi-category line chart
+         * - `sparkline`: One lone line with no axes at all
          * - `column`: For a column chart, usually x-indexed by time
          * - `pie`: For a percentage/zero-sum-style chart
          * - `calendar`: GitHub contribution-calendar-style viz
