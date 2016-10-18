@@ -61,8 +61,92 @@
     },
 
     multilineChart: {
-      prepare: function(width, height, el, chart) {
+      prepare: function(timeParser, timeFormatter, width, height, svg, chart, data) {
+        var margin = {top: 5, right: 30, bottom: 40, left: 30},
+            width = width - margin.left - margin.right,
+            height = height - margin.top - margin.bottom,
+            el = svg
+                  .append("g")
+                  .attr("width", width)
+                  .attr("height", height)
+                  .attr("transform", "translate(" + margin.left + "," + margin.top + ")"),
+            x = d3.scaleTime()
+                  .range([0, width]),
+            y = d3.scaleLinear()
+                  .range([height, 0]),
+            xAxis = d3.axisBottom()
+                      .scale(x)
+                      .tickFormat(timeFormatter()),
+            yAxis = d3.axisLeft()
+                      .scale(y),
+            line = d3.line()
+                     .curve(d3.curveBasis)
+                     .x(function(d) { return x(timeParser(d.timeframe.end)); })
+                     .y(function(d) { return y(d.value); }),
+            color = d3.scaleOrdinal(d3.schemeCategory10),
+            dataByCategory = {},
+            highWaterMark = 0,
+            categories = [];
 
+        // for each category...
+        data.map(function(d) {
+          var timeframe = d.timeframe,
+              valuesByCategory = d.value;
+
+          // for each value...
+          valuesByCategory.map(function (v) {
+            var name = v.name,
+                value = v.result;
+
+            // keep a running maximum
+            if (value > highWaterMark)
+              highWaterMark = value;
+
+            // provision and add to data-by-category
+            if (!dataByCategory[name]) {
+              categories.push(name);
+              dataByCategory[name] = [];
+            }
+
+            dataByCategory[name].push({
+              timeframe: timeframe,
+              value: value
+            });
+          });
+        });
+
+        debugger;
+
+        // calculate domain of each axis
+        x.domain(d3.extent(data, function(d) { return timeParser(d.timeframe.start); }));
+        y.domain([0, highWaterMark]);
+
+        // map X axis
+        el.append("g")
+           .attr("class", "axis axis--x")
+           .attr("transform", "translate(0," + height + ")")
+           .call(xAxis)
+             .selectAll("text")
+             .style("text-anchor", "end")
+             .attr("dx", "-.8em")
+             .attr("dy", ".15em")
+             .attr("transform", "rotate(-65)");
+
+        // map Y axis
+        el.append("g")
+           .attr("class", "axis axis--y")
+           .call(yAxis);
+
+        // for each category, map a line
+        categories.map(function (category) {
+          el.append("path")
+             .datum(dataByCategory[category])
+             .style("fill", "none")
+             .style("stroke", function() {
+                return color(category);
+             })
+             .attr("d", line);
+        });
       }
     }
   };
