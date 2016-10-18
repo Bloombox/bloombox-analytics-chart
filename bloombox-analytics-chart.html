@@ -10,7 +10,15 @@ data from Bloombox analytics streams.
 -->
 
 <link rel="import" href="../polymer/polymer.html">
+
+<link rel="import" href="../iron-resizable-behavior/iron-resizable-behavior.html">
+
+<link rel="import" href="../paper-progress/paper-progress.html">
+
 <link rel="import" href="../bloombox-styles/bloombox-styles.html">
+
+<link rel="import" href="./behaviors/bloombox-line-chart-behavior.html">
+<link rel="import" href="./behaviors/bloombox-time-format-behavior.html">
 
 <script type="text/javascript" src="../keen-js/dist/keen-query.min.js"></script>
 
@@ -19,17 +27,43 @@ data from Bloombox analytics streams.
   <template strip-whitespace>
     <style is="custom-style" include="bloombox-styles">
       :host {
-        display: block;
+        display: flex;
+        justify-content: center;
+        border: var(--bloombox-chart-border, 1px solid #dedede);
+        border-radius: var(--bloombox-chart-border-radius, 3px);
       }
 
       :host main {
-        width: var(--bloombox-chart-width, 400px);
+        width: var(--bloombox-chart-width, 100%);
         min-height: var(--bloombox-chart-min-height, 200px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      paper-progress.chart-loading {
+        --paper-progress-indeterminate-cycle-duration: 5s;
+      }
+
+      div.chart-container {
+        display: flex;
+        justify-content: center;
+        min-height: var(--bloombox-chart-min-height, 200px);
+      }
+
+      div.chart-container,
+      svg {
+        width: var(--bloombox-chart-width, 100%);
       }
     </style>
 
     <main>
-      <b>hi</b>
+      <div class="loading-overlay" hidden$="[[!_loading]]">
+        <paper-progress indeterminate class="chart-loading"></paper-progress>
+      </div><!-- end div.loading-overlay -->
+      <div class="chart-container" hidden$="[[_loading]]">
+        <svg id="chartContent" class="chart-content"></svg><!-- end svg.chart-content -->
+      </div><!-- end div.chart-container -->
     </main>
   </template>
 
@@ -37,9 +71,20 @@ data from Bloombox analytics streams.
     var BloomboxAnalyticsChart = Polymer.BloomboxAnalyticsChart = Polymer({
       is: "bloombox-analytics-chart",
 
+      listeners: {
+        "iron-resize": "_onResize"
+      },
+
       observers: [
         "_queryShouldChange(_booted, _client, environment, partner, location, collection, readKey, analysisType, dataType, groupBy, timeframe, timeframeMode, timezone, interval, filters)",
-        "_queryDidChange(_client, _query)"
+        "_queryDidChange(_client, _query)",
+        "_scheduleRender(_booted, _data, _dimensions)"
+      ],
+
+      behaviors: [
+        Polymer.IronResizableBehavior,
+        Polymer.BloomboxLineChartBehavior,
+        Polymer.BloomboxTimeFormatBehavior
       ],
 
       properties: {
@@ -51,6 +96,49 @@ data from Bloombox analytics streams.
           type: Boolean,
           notify: true,
           readOnly: true
+        },
+
+        /**
+         * Holds calculated width/height dimensions for the
+         * local widget.
+         */
+        _dimensions: {
+          type: Object,
+          notify: true,
+          readOnly: true
+        },
+
+        /**
+         * Flag indicating that a render job is already
+         * scheduled for the local chart.
+         */
+        _renderScheduled: {
+          type: Boolean,
+          notify: true,
+          readOnly: true,
+          value: false
+        },
+
+        /**
+         * Whether or not this chart should currently be
+         * showing as loading/busy.
+         */
+        _loading: {
+          type: Boolean,
+          notify: true,
+          readOnly: true,
+          value: true
+        },
+
+        /**
+         * Whether or not this chart has completed a full
+         * render yes.
+         */
+        _rendered: {
+          type: Boolean,
+          notify: true,
+          readOnly: true,
+          value: false
         },
 
         /**
@@ -80,8 +168,7 @@ data from Bloombox analytics streams.
           type: Object,
           notify: false,
           readOnly: true,
-          reflectToAttribute: false,
-          observer: "_dataDidChange"
+          reflectToAttribute: false
         },
 
         /**
@@ -158,6 +245,8 @@ data from Bloombox analytics streams.
          * Type of chart to use/display via this widget. Valid options
          * include:
          * - `bar`: For a bar chart, usually x-indexed by value
+         * - `line`: For a line chart, usually x-indexed by time
+         * - `multiline`: Like above but a multi-category line chart
          * - `column`: For a column chart, usually x-indexed by time
          * - `pie`: For a percentage/zero-sum-style chart
          * - `calendar`: GitHub contribution-calendar-style viz
@@ -321,6 +410,18 @@ data from Bloombox analytics streams.
       },
 
       /**
+       * Event handler for dimension changes.
+       */
+      _onResize: function(event) {
+        var width = this.offsetWidth,
+            height = this.offsetHeight;
+        this._set_dimensions({
+          width: width,
+          height: height
+        });
+      },
+
+      /**
        * Observer that propagates configuration changes into the
        * underlying chart query.
        */
@@ -368,15 +469,69 @@ data from Bloombox analytics streams.
       },
 
       /**
-       * Responds to changes in query response data.
+       * Schedule and debounce chart render ops, according to
+       * whether the DOM and dataset are ready.
        */
-      _dataDidChange: function(newData, oldData) {
-        if (!oldData) {
-          // probably loading initially
-          console.log("data did load", newData);
-        } else {
-          console.log("data did change", newData, oldData);
+      _scheduleRender: function(booted, data, dimensions) {
+        var that = this;
+        if (this._renderScheduled !== true) {
+          if (booted === true && dimensions) {
+            this._renderScheduled = true;
+            this.debounce("_renderChart", function() {
+              that._renderChart();
+              that._renderScheduled = false;
+            }, 300);
+          } else {
+            this.async(this._scheduleRender, 100);
+          }
         }
+        // there is already a render scheduled
+      },
+
+      /**
+       * Re-renders the current chart.
+       */
+      _renderChart: function() {
+        // render chart data into d3 chart
+        // DT format from keen: `2016-10-18T09:00:00.000Z`
+        var width = this._dimensions.width,
+            height = this._dimensions.height,
+            data = this._data,
+            svg = d3.select(this.$.chartContent),
+            parseTime = d3.timeParse("%Y-%m-%dT%H:%M:%S.%L%Z"),
+            chartRenderer = this[this.chartType + "Chart"],
+            formatTime;
+
+        if (this._rendered === true)
+          // clear existing chart
+          svg.selectAll("*").remove();
+
+        // cannot proceed without chart renderer
+        if (!chartRenderer)
+          throw "Failed to resolve chart renderer of type '" + this.chartType + "'.";
+
+        // if we have an interval, we need a valid formatter
+        if (this.interval) {
+          formatTime = this.timeFormatters[this.interval];
+          if (!formatTime)
+            throw "Failed to resolve time formatter for interval '" + this.interval + "'.";
+        }
+
+        // prepare-phase of chart rendering
+        chartRenderer.prepare(parseTime, formatTime, width, height, svg, this, data);
+
+        this.async(function() {
+          this._set_loading(false);
+          this._set_rendered(true);
+        }, 200);
+      },
+
+      /**
+       * Force a refresh of chart data and then re-render.
+       */
+      refresh: function() {
+        console.log("Refreshing chart data...");
+        this._queryDidChange(this._client, this._query);
       },
 
       /**

@@ -1,0 +1,73 @@
+
+<script>
+  /**
+   * `Polymer.BloomboxTimeFormatBehavior` provides time formatting
+   * tools based on chart interval settings.
+   *
+   * @polymerBehavior
+   */
+  var BloomboxTimeFormatBehavior = Polymer.BloomboxTimeFormatBehavior = {
+    timeFormatters: {
+      /**
+       * Format data points by the minute, usually in
+       * the scope of a single hour.
+       */
+      minutely: function() {
+        return d3.timeFormat("%I:%M%p");  // "12:05PM"
+      },
+
+      /**
+       * Format data points by the hour, usually in the
+       * scope of a day.
+       */
+      hourly: function() {
+        return d3.timeFormat("%I:00%p")  // "12:00PM"
+      },
+
+      /**
+       * Format data points by day, usually in the scope
+       * of a week or month.
+       *
+       * Pass `true` to add a human-readable abbreviation
+       * to the beginning of the label.
+       */
+      daily: function(abbv) {
+        if (abbv)
+          return d3.timeFormat("%a %m/%d");  // "Tue 10/18"
+        return d3.timeFormat("%m/%d");  // "10/18"
+      },
+
+      /**
+       * Format data points by week, usually in the scope
+       * of one or multiple months.
+       */
+      weekly: function() {
+        formatter = d3.timeFormat("%m/%d");  // "10/18"
+        return (function(d) {
+          // format with start/end of timeframe
+          return formatter(d.start) + "-" + formatter(d.end);  // "10/18-10/25"
+        });
+      },
+
+      /**
+       * Format data points by month, usually in the scope
+       * of year-to-date, this/last year, or a trailing
+       * window of months.
+       *
+       * Pass `true` to use the full name of the month
+       * rather than an abbrevition.
+       */
+      monthly: function(full) {
+        return d3.timeFormat(full ? "%B" : "%b");
+      },
+
+      /**
+       * Format data points by year in the scope of multiple
+       * years.
+       */
+      yearly: function() {
+        return d3.timeFormat("%Y");
+      }
+    }
+  };
+</script>

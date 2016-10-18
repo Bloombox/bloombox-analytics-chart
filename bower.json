@@ -21,7 +21,8 @@
   "dependencies": {
     "polymer": "Polymer/polymer#^1.5.0",
     "bloombox-styles": "git@github.com:bloombox/bloombox-styles.git#master",
-    "keen-js": "^3.4.1"
+    "keen-js": "^3.4.1",
+    "iron-resizable-behavior": "PolymerElements/iron-resizable-behavior#^1.0.5"
   },
   "devDependencies": {
     "iron-component-page": "PolymerElements/iron-component-page#^1.0.0",
