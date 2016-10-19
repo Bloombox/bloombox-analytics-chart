@@ -1,0 +1,93 @@
+
+<script>
+  /**
+   * `Polymer.BloomboxPieChartBehavior` provides backing render
+   * logic for pie charts.
+   *
+   * @polymerBehavior
+   */
+  var BloomboxPieChartBehavior = Polymer.BloomboxPieChartBehavior = {
+    pieChart: {
+      /**
+       * Default configuration for rendering pie charts.
+       */
+      config: {
+        legend: {
+          size: 16,
+          spacing: 1
+        }
+      },
+
+      /**
+       * Main pie chart render function.
+       */
+      prepare: function(timeParser, timeFormatter, width, height, svg, chart, data) {
+        var margin = {top: (typeof chart.heading === "string" ? 25 : 10), right: 30, bottom: 5, left: 30},
+            legendCombinedSize = BloomboxPieChartBehavior.pieChart.config.legend.size +
+                                 BloomboxPieChartBehavior.pieChart.config.legend.spacing,
+            transformWidth = width / 2,
+            transformHeight = height / 2,
+            width = width - margin.left - margin.right,
+            height = height - margin.top - margin.bottom - (chart.heading ? 20 : 0),
+            radius = Math.min(width, height) * 0.6,
+            color = d3.scaleOrdinal(d3.schemeCategory10),
+            el = svg
+                  .append("g")
+                  .attr("transform", "translate(" + transformWidth + "," + transformHeight + ")"),
+            arc = d3.arc()
+                    .outerRadius(radius - 10)
+                    .innerRadius(radius - (radius * 0.3)),
+            labelArc = d3.arc()
+                         .outerRadius(radius - 40)
+                         .innerRadius(radius - 40)
+            pie = d3.pie()
+                    .sort(null)
+                    .value(function(d) {
+                      return d.result;
+                    }),
+            g = el.selectAll(".arc")
+                   .data(pie(data))
+                  .enter()
+                   .append("g")
+                    .attr("class", "arc"),
+            legend = null;
+
+        // render pie slices
+        g.append("path")
+          .attr("d", arc)
+          .style("fill", function(d) {
+            return color(d.data.name);
+          });
+
+        // render inner legend
+        legend = el.selectAll(".legend")
+          .data(data)
+          .enter()
+           .append("g")
+            .attr("class", "legend")
+            .attr("transform", function(d, i) {
+              var lHeight = legendCombinedSize,
+                  offset = lHeight * color.domain().length / 2,
+                  horz = -2 * BloomboxPieChartBehavior.pieChart.config.legend.size,
+                  vert = i * lHeight - offset;
+              return "translate(" + horz + "," + vert + ")";
+            });
+
+        legend.append("rect")
+               .attr("width", 10)
+               .attr("height", 10)
+               .style("fill", function(d) {
+                return color(d.name);
+               });
+
+        legend.append("text")
+               .attr("x", 15)
+               .attr("y", 10)
+               .style("font-size", "80%")
+               .text(function(d) {
+                 return d.name;
+               });
+      }
+    }
+  };
+</script>
