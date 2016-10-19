@@ -413,7 +413,7 @@ data from Bloombox analytics streams.
         interval: {
           type: String,
           notify: false,
-          value: "hourly"
+          value: null
         },
 
         /**
@@ -525,7 +525,7 @@ data from Bloombox analytics streams.
             this.debounce("_renderChart", function() {
               that._renderChart();
               that._renderScheduled = false;
-            }, 300);
+            }, 100);
           } else {
             this.async(this._scheduleRender, 100);
           }
