@@ -128,6 +128,13 @@ data from Bloombox analytics streams.
         Polymer.BloomboxTimeFormatBehavior
       ],
 
+      /**
+       * Fired when the chart re-renders, either because of
+       * a query change, or a timed automatic refresh.
+       *
+       * @event chart-refreshed
+       */
+
       properties: {
         /**
          * Whether or not this chart has "booted up" yet, in
@@ -595,10 +602,13 @@ data from Bloombox analytics streams.
         // prepare-phase of chart rendering
         chartRenderer.render(svg, this, data, settings);
 
-        this.async(function() {
-          this._set_loading(false);
-          this._set_rendered(true);
-        }, 200);
+        if (this._loading || !this._rendered) {
+          this.async(function() {
+            this._set_loading(false);
+            this._set_rendered(true);
+          }, 200);
+        }
+        this.fire("chart-refreshed");
       },
 
       /**
