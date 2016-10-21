@@ -43,16 +43,16 @@ data from Bloombox analytics streams.
         background-color: var(--bloombox-chart-background-color, transparent);
       }
 
-      :host main.sparkline {
-        border: none;
-        max-width: 200px;
-        max-height: 75px;
-        min-width: 100px;
-        min-height: 75px;
-      }
-
+      /** -- Loading UI -- **/
       paper-progress.chart-loading {
         --paper-progress-indeterminate-cycle-duration: 5s;
+      }
+
+      /** -- Chart Containers -- **/
+      div.chart-container,
+      svg {
+        width: 100%;
+        height: 100%;
       }
 
       div.chart-container {
@@ -63,17 +63,7 @@ data from Bloombox analytics streams.
         min-height: var(--bloombox-chart-min-height, 200px);
       }
 
-      :host main.sparkline div.chart-container {
-        min-height: 0 !important;
-        height: 75px;
-      }
-
-      div.chart-container,
-      svg {
-        width: 100%;
-        height: 100%;
-      }
-
+      /** -- Chart Headings -- **/
       div.chart-heading-container {
         position: absolute;
         top: 0;
@@ -87,6 +77,20 @@ data from Bloombox analytics streams.
         font-size: 8pt;
         user-select: none;
         cursor: default;
+      }
+
+      /** -- Sparkline Charts -- **/
+      :host main.sparkline {
+        border: none;
+        max-width: 200px;
+        max-height: 75px;
+        min-width: 100px;
+        min-height: 75px;
+      }
+
+      :host main.sparkline div.chart-container {
+        min-height: 0 !important;
+        height: 75px;
       }
     </style>
 
