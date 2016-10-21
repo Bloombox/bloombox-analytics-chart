@@ -8,8 +8,12 @@
    */
   var BloomboxLineChartBehavior = Polymer.BloomboxLineChartBehavior = {
     lineChart: {
-      prepare: function(timeParser, timeFormatter, width, height, svg, chart, data) {
-        var margin = {top: (typeof chart.heading === "string" ? 25 : 10), right: 30, bottom: 20, left: 30},
+      render: function(svg, chart, data, settings) {
+        var timeParser = settings.timeParse,
+            timeFormatter = settings.timeFormat,
+            width = settings.width,
+            height = settings.height,
+            margin = {top: (typeof chart.heading === "string" ? 25 : 10), right: 30, bottom: 20, left: 30},
             width = width - margin.left - margin.right,
             height = height - margin.top - margin.bottom - (chart.heading? 20 : 0),  // subtract 20px for heading
             el = svg
@@ -61,8 +65,12 @@
     },
 
     sparklineChart: {
-      prepare: function(timeParser, timeFormatter, width, height, svg, chart, data) {
-        var margin = {top: (typeof chart.heading === "string" ? 20 : 0), right: 0, bottom: 0, left: 0},
+      render: function(svg, chart, data, settings) {
+        var timeParser = settings.timeParse,
+            timeFormatter = settings.timeFormat,
+            width = settings.width,
+            height = settings.height,
+            margin = {top: (typeof chart.heading === "string" ? 20 : 0), right: 0, bottom: 0, left: 0},
             width = width > 200 ? 200 : width,
             height = height > 50 ? 50 : height,
             width = width - margin.left - margin.right,
@@ -94,15 +102,19 @@
         el.append("path")
            .datum(data)
            .style("fill", "none")
-           .style("stroke", "steelblue")
+           .style("stroke", color)
            .attr("d", line);
       }
     },
 
 
     multilineChart: {
-      prepare: function(timeParser, timeFormatter, width, height, svg, chart, data) {
-        var margin = {top: (typeof chart.heading === "string" ? 25 : 10), right: 30, bottom: 20, left: 30},
+      render: function(svg, chart, data, settings) {
+        var timeParser = settings.timeParse,
+            timeFormatter = settings.timeFormat,
+            width = settings.width,
+            height = settings.height,
+            margin = {top: (typeof chart.heading === "string" ? 25 : 10), right: 30, bottom: 20, left: 30},
             width = width - margin.left - margin.right,
             height = height - margin.top - margin.bottom - (chart.heading? 20 : 0),  // subtract 20px for heading
             el = svg

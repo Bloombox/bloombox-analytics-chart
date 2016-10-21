@@ -21,8 +21,12 @@
       /**
        * Main pie chart render function.
        */
-      prepare: function(timeParser, timeFormatter, width, height, svg, chart, data) {
-        var margin = {top: (typeof chart.heading === "string" ? 25 : 10), right: 30, bottom: 5, left: 30},
+      render: function(svg, chart, data, settings) {
+        var timeParser = settings.timeParse,
+            timeFormatter = settings.timeFormat,
+            width = settings.width,
+            height = settings.height,
+            margin = {top: (typeof chart.heading === "string" ? 25 : 5), right: 20, bottom: 5, left: 20},
             legendCombinedSize = BloomboxPieChartBehavior.pieChart.config.legend.size +
                                  BloomboxPieChartBehavior.pieChart.config.legend.spacing,
             transformWidth = width / 2,

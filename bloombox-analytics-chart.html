@@ -460,10 +460,14 @@ data from Bloombox analytics streams.
       _onResize: function(event) {
         var width = this.offsetWidth,
             height = this.offsetHeight;
-        this._set_dimensions({
-          width: width,
-          height: height
-        });
+        if (width && height) {
+          this._set_dimensions({
+            width: width,
+            height: height
+          });
+        } else {
+          this.async(this._onResize, 100);
+        }
       },
 
       /**
@@ -545,7 +549,8 @@ data from Bloombox analytics streams.
             svg = d3.select(this.$.chartContent),
             parseTime = d3.timeParse("%Y-%m-%dT%H:%M:%S.%L%Z"),
             chartRenderer = this[this.chartType + "Chart"],
-            formatTime;
+            formatTime,
+            settings = {};
 
         if (this._rendered === true)
           // clear existing chart
@@ -554,16 +559,21 @@ data from Bloombox analytics streams.
         // cannot proceed without chart renderer
         if (!chartRenderer)
           throw "Failed to resolve chart renderer of type '" + this.chartType + "'.";
+        settings.renderer = chartRenderer;
+        settings.timeParse = parseTime;
+        settings.width = width;
+        settings.height = height;
 
         // if we have an interval, we need a valid formatter
         if (this.interval) {
           formatTime = this.timeFormatters[this.interval];
           if (!formatTime)
             throw "Failed to resolve time formatter for interval '" + this.interval + "'.";
+          settings.timeFormat = formatTime;
         }
 
         // prepare-phase of chart rendering
-        chartRenderer.prepare(parseTime, formatTime, width, height, svg, this, data);
+        chartRenderer.render(svg, this, data, settings);
 
         this.async(function() {
           this._set_loading(false);
