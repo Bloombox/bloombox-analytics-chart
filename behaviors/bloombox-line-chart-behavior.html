@@ -139,6 +139,7 @@
             color = d3.scaleOrdinal(d3.schemeCategory10),
             dataByCategory = {},
             highWaterMark = 0,
+            groupByProperty = chart.groupBy || "name",
             categories = [];
 
         // for each category...
@@ -148,7 +149,7 @@
 
           // for each value...
           valuesByCategory.map(function (v) {
-            var name = v.name,
+            var name = v[groupByProperty],
                 value = v.result;
 
             // keep a running maximum
