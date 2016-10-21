@@ -428,6 +428,15 @@ data from Bloombox analytics streams.
           value: function() {
             return [];
           }
+        },
+
+        /**
+         * Colorset to use for various categories in a chart.
+         * A standard colorset is used if none is specified.
+         */
+        colors: {
+          type: Array,
+          notify: true
         }
       },
 
@@ -546,6 +555,7 @@ data from Bloombox analytics streams.
         var width = this._dimensions.width,
             height = this._dimensions.height,
             data = this._data,
+            colorset = this.colors,
             svg = d3.select(this.$.chartContent),
             parseTime = d3.timeParse("%Y-%m-%dT%H:%M:%S.%L%Z"),
             chartRenderer = this[this.chartType + "Chart"],
@@ -571,6 +581,10 @@ data from Bloombox analytics streams.
             throw "Failed to resolve time formatter for interval '" + this.interval + "'.";
           settings.timeFormat = formatTime;
         }
+
+        // if we have a custom colorset, attach it
+        if (colorset)
+          settings.colors = colorset;
 
         // prepare-phase of chart rendering
         chartRenderer.render(svg, this, data, settings);

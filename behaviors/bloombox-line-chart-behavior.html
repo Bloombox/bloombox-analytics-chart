@@ -73,6 +73,7 @@
             margin = {top: (typeof chart.heading === "string" ? 20 : 0), right: 0, bottom: 0, left: 0},
             width = width > 200 ? 200 : width,
             height = height > 50 ? 50 : height,
+            color = settings.colors ? settings.colors[0] : "steelblue",
             width = width - margin.left - margin.right,
             height = height - margin.top - margin.bottom,  // subtract 20px for heading
             el = svg
