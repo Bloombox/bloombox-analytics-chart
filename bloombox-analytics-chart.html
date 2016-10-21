@@ -40,12 +40,14 @@ data from Bloombox analytics streams.
         align-items: center;
         border: var(--bloombox-chart-border, 1px solid #dedede);
         border-radius: var(--bloombox-chart-border-radius, 3px);
+        background-color: var(--bloombox-chart-background-color, transparent);
       }
 
       :host main.sparkline {
         border: none;
         max-width: 200px;
         max-height: 75px;
+        min-width: 100px;
         min-height: 75px;
       }
 
