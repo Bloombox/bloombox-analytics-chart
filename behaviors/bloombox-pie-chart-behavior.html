@@ -40,7 +40,7 @@
                   .attr("transform", "translate(" + transformWidth + "," + transformHeight + ")"),
             arc = d3.arc()
                     .outerRadius(radius - 10)
-                    .innerRadius(radius - (radius * 0.3)),
+                    .innerRadius(radius - (radius * 0.25)),
             labelArc = d3.arc()
                          .outerRadius(radius - 40)
                          .innerRadius(radius - 40)
@@ -72,8 +72,8 @@
             .attr("transform", function(d, i) {
               var lHeight = legendCombinedSize,
                   offset = lHeight * color.domain().length / 2,
-                  horz = -2 * BloomboxPieChartBehavior.pieChart.config.legend.size,
-                  vert = i * lHeight - offset;
+                  horz = -2.25 * BloomboxPieChartBehavior.pieChart.config.legend.size,
+                  vert = i * lHeight - offset + 5;
               return "translate(" + horz + "," + vert + ")";
             });
 
