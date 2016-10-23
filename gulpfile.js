@@ -11,7 +11,6 @@ var del = require('del');
 var runSequence = require('run-sequence');
 var browserSync = require('browser-sync');
 var reload = browserSync.reload;
-var superstatic = require('superstatic');
 var shell = require('gulp-shell');
 
 gulp.task('build', shell.task(['make']));
