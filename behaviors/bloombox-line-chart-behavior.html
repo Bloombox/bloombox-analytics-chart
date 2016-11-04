@@ -60,7 +60,8 @@
            .datum(data)
            .style("fill", "none")
            .style("stroke", "steelblue")
-           .attr("d", line);
+           .attr("d", line)
+           .attr("transform", "translate(-" + (margin.left * 0.55) + ",0)");
       }
     },
 
@@ -197,7 +198,8 @@
              .style("stroke", function() {
                 return color(category);
              })
-             .attr("d", line);
+             .attr("d", line)
+             .attr("transform", "translate(-" + (margin.left * 0.6) + ",0)");
         });
       }
     }
