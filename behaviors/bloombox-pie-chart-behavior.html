@@ -1,5 +1,7 @@
 
-<script>
+<script type="text/javascript">
+  "use strict";
+
   /**
    * `Polymer.BloomboxPieChartBehavior` provides backing render
    * logic for pie charts.
@@ -21,7 +23,7 @@
       /**
        * Main pie chart render function.
        */
-      render: function(svg, chart, data, settings) {
+      render: function(svg, keenChart, chart, data, settings) {
         var timeParser = settings.timeParse,
             timeFormatter = settings.timeFormat,
             width = settings.width,

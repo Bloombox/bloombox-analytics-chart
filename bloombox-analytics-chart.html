@@ -21,18 +21,19 @@ data from Bloombox analytics streams.
 <link rel="import" href="./behaviors/bloombox-line-chart-behavior.html">
 <link rel="import" href="./behaviors/bloombox-time-format-behavior.html">
 
-<script type="text/javascript" src="../keen-js/dist/keen-query.min.js"></script>
-
 
 <dom-module id="bloombox-analytics-chart">
   <template strip-whitespace>
+    <link href="//d26b395fwzu5fz.cloudfront.net/keen-dataviz-1.0.4.css" rel="stylesheet" />
     <style is="custom-style" include="bloombox-styles">
       :host {
         display: flex;
         justify-content: center;
+        color: var(--bloombox-chart-foreground-color, #333);
       }
 
       :host main {
+        color: #333;
         width: var(--bloombox-chart-width, 100%);
         min-height: var(--bloombox-chart-min-height, 200px);
         display: flex;
@@ -41,6 +42,10 @@ data from Bloombox analytics streams.
         border: var(--bloombox-chart-border, 1px solid #dedede);
         border-radius: var(--bloombox-chart-border-radius, 3px);
         background-color: var(--bloombox-chart-background-color, transparent);
+      }
+
+      :host main.dark {
+        color: #ddd;
       }
 
       /** -- Loading UI -- **/
@@ -63,6 +68,10 @@ data from Bloombox analytics streams.
         min-height: var(--bloombox-chart-min-height, 200px);
       }
 
+      div.chart-content {
+        max-height: var(--bloombox-chart-min-height, 200px);
+      }
+
       /** -- Chart Headings -- **/
       div.chart-heading-container {
         position: absolute;
@@ -70,6 +79,10 @@ data from Bloombox analytics streams.
         left: 0;
         padding-left: 5px;
         max-height: 20px;
+      }
+
+      main.dark div.chart-heading-container {
+        color: #ddd;
       }
 
       span.chart-heading {
@@ -88,26 +101,76 @@ data from Bloombox analytics streams.
         min-height: 75px;
       }
 
-      :host main.sparkline div.chart-container {
+      :host main.sparkline div.chart-container,
+      :host main.sparkline div.chart-content {
         min-height: 0 !important;
         height: 75px;
       }
+
+      /** -- Metric Charts -- **/
+      :host main.metric,
+      :host main.metric div.chart-container
+      :host main.metric div.chart-content {
+        border: none;
+        color: var(--bloombox-chart-foreground-color, #333);
+        max-height: 150px;
+      }
+
+      main.dark.metric .keen-dataviz-metric,
+      main.dark.metric .keen-dataviz-metric-value,
+      main.dark.metric .keen-dataviz-metric-title {
+        color: #ddd;
+      }
+
+      /** -- Refresh Effect -- **/
+      :host main.metric div.chart-container {
+        transition-property: opacity;
+        transition-duration: 0.25s;
+      }
+
+      :host main.metric div.chart-container.just-refreshed {
+        opacity: 0.5;
+      }
+
+      :host main.metric div.chart-container.just-refreshed-done {
+        opacity: 1 !important;
+        transition-duration: 1.2s;
+      }
+
+      :host main.metric div.chart-heading-container {
+        display: none;
+        color: var(--bloombox-chart-foreground-color, #333);
+      }
+
+      :host main.metric .keen-dataviz-metric {
+        height: auto !important;
+        color: var(--bloombox-chart-foreground-color, #333);
+      }
+
+      :host main.metric .keen-dataviz-metric-value {
+        padding-top: 20px !important;
+        color: var(--bloombox-chart-foreground-color, #333);
+      }
     </style>
 
-    <main class$="[[chartType]]">
+    <main class$="[[theme]] [[chartType]]">
       <div class="loading-overlay" hidden$="[[!_loading]]">
         <paper-progress indeterminate class="chart-loading"></paper-progress>
       </div><!-- end div.loading-overlay -->
-      <div class="chart-container" hidden$="[[_loading]]">
+      <div id="chartContainer" class="chart-container" hidden$="[[_loading]]">
         <div class="chart-heading-container">
           <span class="chart-heading">[[heading]]</span>
         </div><!-- end div.chart-heading-container -->
-        <svg id="chartContent" class="chart-content"></svg><!-- end svg.chart-content -->
+        <div id="chartContent" class="chart-content">
+          <svg id="chartData"></svg><!-- end svg.chart-data -->
+        </div><!-- end div.chart-content -->
       </div><!-- end div.chart-container -->
     </main>
   </template>
 
-  <script>
+  <script type="text/javascript">
+    "use strict";
+
     var BloomboxAnalyticsChart = Polymer.BloomboxAnalyticsChart = Polymer({
       is: "bloombox-analytics-chart",
 
@@ -117,7 +180,6 @@ data from Bloombox analytics streams.
 
       observers: [
         "_queryShouldChange(_booted, _client, environment, partner, location, collection, readKey, analysisType, dataType, groupBy, timeframe, timeframeMode, timezone, interval, filters)",
-        "_queryDidChange(_client, _query)",
         "_scheduleRender(_booted, _data, _dimensions)"
       ],
 
@@ -248,6 +310,27 @@ data from Bloombox analytics streams.
         },
 
         /**
+         * Activate or deactivate the autorefresh feature.
+         */
+        autoRefresh: {
+          type: Boolean,
+          notify: false,
+          reflectToAttribute: true,
+          value: false,
+          observer: "_autoRefreshDidChange"
+        },
+
+        /**
+         * Number of milliseconds for an interval to auto refresh the chart.
+         */
+        autoRefreshInterval: {
+          type: Number,
+          notify: false,
+          reflectToAttribute: true,
+          value: 10000
+        },
+
+        /**
          * Data environment that we are operating under. Defaults
          * to the `sandbox`.
          */
@@ -308,11 +391,12 @@ data from Bloombox analytics streams.
          * - `column`: For a column chart, usually x-indexed by time
          * - `pie`: For a percentage/zero-sum-style chart
          * - `calendar`: GitHub contribution-calendar-style viz
+         * - `metric`: Shows a single value rating.
          */
         chartType: {
           type: String,
           notify: false,
-          value: "column",
+          value: "metric",
           reflectToAttribute: true
         },
 
@@ -339,8 +423,10 @@ data from Bloombox analytics streams.
         /**
          * Kind of event data to display in this chart. Valid options
          * include:
+         * - `actions`: Data about actions taken in the app.
          * - `sections`: Data about section usage inside the app.
          * - `products`: Data about actual products inside the app.
+         * - `internal`: Data about the devices and underlying system.
          * - `locations`: Data about individual partner locations.
          */
         dataType: {
@@ -369,16 +455,16 @@ data from Bloombox analytics streams.
          * - `1_hour`: last 60 minutes
          * - `6_hours`: last 6 hours
          * - `12_hours`: last 12 hours
-         * - `1_day`: last 24 hours
-         * - `3_days`: last 72 hours
-         * - `1_week`: last week
-         * - `1_month`: last month
+         * - `24_hours`: last 24 hours
+         * - `72_hours`: last 72 hours
+         * - `7_days`: last week
+         * - `30_days`: last month
          * - `1_year`: last year
          */
         timeframe: {
           type: String,
           notify: false,
-          value: "1_day",
+          value: "24_hours",
           reflectToAttribute: true
         },
 
@@ -389,7 +475,7 @@ data from Bloombox analytics streams.
         timeframeMode: {
           type: String,
           notify: false,
-          value: "previous",
+          value: "this",
           reflectToAttribute: true
         },
 
@@ -427,6 +513,17 @@ data from Bloombox analytics streams.
           type: String,
           notify: false,
           value: null
+        },
+
+        /**
+         * Visual theme to use for this chart. Options are `light`
+         * and `dark`.
+         */
+        theme: {
+          type: String,
+          notify: true,
+          reflectToAttribute: true,
+          value: "light"
         },
 
         /**
@@ -469,10 +566,12 @@ data from Bloombox analytics streams.
        */
       _computeEventCollection: function(dataType) {
         var lowered = dataType.toLowerCase();
-        if (lowered === "products")
-          return "products";
-        if (lowered === "locations")
-          return "locations";
+        if (lowered === "products" ||
+            lowered === "locations" ||
+            lowered === "actions")
+          return lowered;
+        if (lowered === "internal")
+          return "bloombox_internal";
         return "screens";
       },
 
@@ -493,15 +592,70 @@ data from Bloombox analytics streams.
       },
 
       /**
+       * Handle an autorefresh cycle, optionally scheduling the
+       * next one, too, if so requested.
+       */
+      _handleAutorefresh: function() {
+        var that = this;
+
+        if (this.autoRefresh) {
+          this.debounce('refresh-chart', function() {
+            console.log("Autorefreshing chart...");
+            this.refresh();
+            setTimeout(function() {
+              that._handleAutorefresh();
+            }, this.autoRefreshInterval);
+          }, 5000);
+        }
+      },
+
+      /**
+       * Dispatched when autorefresh is activated or deactivated.
+       */
+      _autoRefreshDidChange: function(newSetting) {
+        var that = this;
+
+        if (newSetting === true && this._rendered) {
+          // schedule autorefresh
+          this._handleAutorefresh();
+        } else if (newSetting === true && !this._rendered) {
+          // if we haven't renderered yet, wait but still schedule
+          this.async(function() {
+            that._handleAutorefresh();
+          }, this.autoRefreshInterval);
+        }
+      },
+
+      /**
        * Observer that propagates configuration changes into the
        * underlying chart query.
        */
-      _queryShouldChange: function(_booted, _client, environment, partner, location, collection, readKey, analysisType, dataType, groupBy, timeframe, timeframeMode, timezone, interval, filters) {
+      _queryShouldChange: function(_booted,
+                                   _client,
+                                   environment,
+                                   partner,
+                                   location,
+                                   collection,
+                                   readKey,
+                                   analysisType,
+                                   dataType,
+                                   groupBy,
+                                   timeframe,
+                                   timeframeMode,
+                                   timezone,
+                                   interval,
+                                   filters) {
+
         var timeframeFormat = [timeframeMode, timeframe].join("_"),
             configPayload = {
               "event_collection": collection,
               "timeframe": timeframeFormat
-            };
+            },
+            that = this,
+            height = this.height,
+            heading = this.heading,
+            chartType = this.chartType,
+            colorset = this.colors;
 
         if (_booted === true) {
           if (groupBy && groupBy.length > 0)
@@ -512,19 +666,28 @@ data from Bloombox analytics streams.
             configPayload["interval"] = interval;
           if (filters && Array.isArray(filters) && filters.length > 0)
             configPayload["filters"] = filters;
-          this._set_query(new Keen.Query(analysisType, configPayload));
-        }
-      },
 
-      /**
-       * Observer that applies a query/client pair to accomplish
-       * fetching our data and rendering our chart.
-       */
-      _queryDidChange: function(_client, _query) {
-        var that = this;
-        _client.run(_query, function(err, response) {
-          that._didReceiveResponse(err, response);
-        });
+          if (chartType !== "sparkline" &&
+              !this._rendered) {
+            var chart = new Dataviz()
+              .el(this.$.chartContent)
+              .colors(colorset ? colorset : d3.scaleOrdinal(d3.schemeCategory20b))
+              .height(height)
+              .title(heading)
+              .type(chartType)
+              .prepare();
+
+            this._set_chart(chart);
+          }
+
+          this._client.query(analysisType, configPayload)
+                                      .then(function(response) {
+                                        that._didReceiveResponse(null, response);
+                                      })
+                                      .catch(function (err) {
+                                        that._didReceiveResponse(err, null);
+                                      });
+        }
       },
 
       /**
@@ -535,6 +698,22 @@ data from Bloombox analytics streams.
         if (error) {
           console.error("An error occurred fetching data from the Keen Analysis API.", error);
         } else {
+          this._set_query(response.query);
+
+          // metric charts support diffing and conditionally rendering
+          if (this.chartType === "metric" && this._rendered === true) {
+            if (typeof response.result === "number") {
+              if (response.result !== this._data) {
+                this.$.chartContainer.classList.add("just-refreshed");
+                this._set_data(response.result);
+                return;
+              } else {
+                // rejecting update: it's the same
+                console.log("Rejecting metric update: no change detected.");
+                return;
+              }
+            }
+          }
           this._set_data(response.result);
         }
       },
@@ -547,13 +726,13 @@ data from Bloombox analytics streams.
         var that = this;
         if (this._renderScheduled !== true) {
           if (booted === true && dimensions) {
-            this._renderScheduled = true;
+            this._set_renderScheduled(true);
             this.debounce("_renderChart", function() {
               that._renderChart();
-              that._renderScheduled = false;
-            }, 100);
+              that._set_renderScheduled(false);
+            }, 200);
           } else {
-            this.async(this._scheduleRender, 100);
+            this.async(this._scheduleRender, 200);
           }
         }
         // there is already a render scheduled
@@ -567,11 +746,13 @@ data from Bloombox analytics streams.
         // DT format from keen: `2016-10-18T09:00:00.000Z`
         var width = this._dimensions.width,
             height = this._dimensions.height,
+            heading = this.heading,
+            chartType = this.chartType,
             data = this._data,
             colorset = this.colors,
-            svg = d3.select(this.$.chartContent),
+            svg = d3.select(this.$.chartData),
             parseTime = d3.timeParse("%Y-%m-%dT%H:%M:%S.%L%Z"),
-            chartRenderer = this[this.chartType + "Chart"],
+            chartRenderer = this[chartType + "Chart"],
             formatTime,
             settings = {};
 
@@ -580,12 +761,16 @@ data from Bloombox analytics streams.
           svg.selectAll("*").remove();
 
         // cannot proceed without chart renderer
-        if (!chartRenderer)
-          throw "Failed to resolve chart renderer of type '" + this.chartType + "'.";
-        settings.renderer = chartRenderer;
+        if (chartRenderer)
+          settings.renderer = chartRenderer;
         settings.timeParse = parseTime;
         settings.width = width;
         settings.height = height;
+        settings.heading = heading;
+
+        if (colorset && typeof colorset === "string") {
+          this.customStyle["--bloombox-chart-foreground-color"] = colorset;
+        }
 
         // if we have an interval, we need a valid formatter
         if (this.interval) {
@@ -600,8 +785,14 @@ data from Bloombox analytics streams.
           settings.colors = colorset;
 
         // prepare-phase of chart rendering
-        chartRenderer.render(svg, this, data, settings);
+        if (chartRenderer) {
+          chartRenderer.render(svg, this._chart, this, data, settings);
+        } else {
+          this._chart.data({query: this._query, result: data})
+                     .render();
+        }
 
+        var isRefresh = this._rendered;
         if (this._loading || !this._rendered) {
           this.async(function() {
             this._set_loading(false);
@@ -609,14 +800,45 @@ data from Bloombox analytics streams.
           }, 200);
         }
         this.fire("chart-refreshed");
+        if (isRefresh) this.didRefreshChart();
       },
 
       /**
        * Force a refresh of chart data and then re-render.
        */
       refresh: function() {
-        console.log("Refreshing chart data...");
-        this._queryDidChange(this._client, this._query);
+        this._queryShouldChange(this._booted,
+                                this._client,
+                                this.environment,
+                                this.partner,
+                                this.location,
+                                this.collection,
+                                this.readKey,
+                                this.analysisType,
+                                this.dataType,
+                                this.groupBy,
+                                this.timeframe,
+                                this.timeframeMode,
+                                this.timezone,
+                                this.interval,
+                                this.filters);
+      },
+
+      /**
+       * Dispatched when the chart is done refreshing.
+       */
+      didRefreshChart: function() {
+        var that = this;
+        if (this.chartType === "metric") {  // for now, only "refresh" metrics visually
+          this.async(function() {
+            that.$.chartContainer.classList.add("just-refreshed-done");
+
+            that.async(function() {
+              that.$.chartContainer.classList.remove("just-refreshed");
+              that.$.chartContainer.classList.remove("just-refreshed-done");
+            }, 2500);
+          }, 1000);
+        }
       },
 
       /**
