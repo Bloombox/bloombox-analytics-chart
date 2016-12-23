@@ -179,7 +179,7 @@ data from Bloombox analytics streams.
       },
 
       observers: [
-        "_queryShouldChange(_booted, _client, environment, partner, location, collection, readKey, analysisType, dataType, groupBy, timeframe, timeframeMode, timezone, interval, filters)",
+        "_queryShouldChange(_booted, _client, environment, partner, location, collection, readKey, analysisType, dataType, groupBy, filters, timeframe, timeframeMode, timezone, interval)",
         "_scheduleRender(_booted, _data, _dimensions)"
       ],
 
@@ -640,11 +640,11 @@ data from Bloombox analytics streams.
                                    analysisType,
                                    dataType,
                                    groupBy,
+                                   filters,
                                    timeframe,
                                    timeframeMode,
                                    timezone,
-                                   interval,
-                                   filters) {
+                                   interval) {
 
         var timeframeFormat = [timeframeMode, timeframe].join("_"),
             configPayload = {
@@ -658,6 +658,8 @@ data from Bloombox analytics streams.
             colorset = this.colors;
 
         if (_booted === true) {
+          if (filters && Array.isArray(filters) && filters.length > 0)
+            configPayload["filters"] = filters;
           if (groupBy && groupBy.length > 0)
             configPayload["group_by"] = groupBy;
           if (timezone && (typeof timezone === "number" || typeof timezone === "string"))
