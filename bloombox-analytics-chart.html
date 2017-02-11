@@ -17,8 +17,7 @@ data from Bloombox analytics streams.
 
 <link rel="import" href="../bloombox-styles/bloombox-styles.html">
 
-<link rel="import" href="./behaviors/bloombox-pie-chart-behavior.html">
-<link rel="import" href="./behaviors/bloombox-line-chart-behavior.html">
+<link rel="import" href="./behaviors/bloombox-chart-behavior.html">
 <link rel="import" href="./behaviors/bloombox-time-format-behavior.html">
 
 
@@ -30,6 +29,7 @@ data from Bloombox analytics streams.
         display: flex;
         justify-content: center;
         color: var(--bloombox-chart-foreground-color, #333);
+        background-color: var(--bloombox-chart-background-color, transparent);
       }
 
       :host main {
@@ -39,6 +39,7 @@ data from Bloombox analytics streams.
         display: flex;
         justify-content: center;
         align-items: center;
+        max-width: 100%;
         border: var(--bloombox-chart-border, 1px solid #dedede);
         border-radius: var(--bloombox-chart-border-radius, 3px);
         background-color: var(--bloombox-chart-background-color, transparent);
@@ -55,7 +56,7 @@ data from Bloombox analytics streams.
 
       /** -- Chart Containers -- **/
       div.chart-container,
-      svg {
+      #chartData {
         width: 100%;
         height: 100%;
       }
@@ -69,16 +70,12 @@ data from Bloombox analytics streams.
       }
 
       div.chart-content {
-        max-height: var(--bloombox-chart-min-height, 200px);
+        min-height: var(--bloombox-chart-min-height, 200px);
       }
 
       /** -- Chart Headings -- **/
       div.chart-heading-container {
-        position: absolute;
-        top: 0;
-        left: 0;
-        padding-left: 5px;
-        max-height: 20px;
+        display: none;
       }
 
       main.dark div.chart-heading-container {
@@ -92,12 +89,18 @@ data from Bloombox analytics streams.
         cursor: default;
       }
 
+      /** -- Pie Charts -- **/
+      :host main.pie {
+        min-width: 400px;
+        min-height: 240px;
+      }
+
       /** -- Sparkline Charts -- **/
       :host main.sparkline {
         border: none;
-        max-width: 200px;
+        max-width: 20px;
         max-height: 75px;
-        min-width: 100px;
+        min-width: 200px;
         min-height: 75px;
       }
 
@@ -107,6 +110,15 @@ data from Bloombox analytics streams.
         height: 75px;
       }
 
+      :host main.sparkline div.chart-heading-container {
+        position: absolute;
+        display: inline-block;
+        top: 0;
+        left: 0;
+        padding-left: 5px;
+        max-height: 20px;
+      }
+
       /** -- Metric Charts -- **/
       :host main.metric,
       :host main.metric div.chart-container
@@ -114,6 +126,11 @@ data from Bloombox analytics streams.
         border: none;
         color: var(--bloombox-chart-foreground-color, #333);
         max-height: 150px;
+      }
+
+      :host .keen-dataviz,
+      :host .keen-dataviz-rendering {
+        min-height: 200px;
       }
 
       main.dark.metric .keen-dataviz-metric,
@@ -126,6 +143,11 @@ data from Bloombox analytics streams.
       :host main.metric div.chart-container {
         transition-property: opacity;
         transition-duration: 0.25s;
+      }
+
+      :host main.metric .keen-dataviz {
+        display: flex;
+        justify-content: center;
       }
 
       :host main.metric div.chart-container.just-refreshed {
@@ -151,14 +173,20 @@ data from Bloombox analytics streams.
         padding-top: 20px !important;
         color: var(--bloombox-chart-foreground-color, #333);
       }
+
+      :host .keen-dataviz-title {
+        margin-left: 10px;
+      }
     </style>
 
     <main class$="[[theme]] [[chartType]]">
-      <div class="loading-overlay" hidden$="[[!_loading]]">
-        <paper-progress indeterminate class="chart-loading"></paper-progress>
-      </div><!-- end div.loading-overlay -->
-      <div id="chartContainer" class="chart-container" hidden$="[[_loading]]">
-        <div class="chart-heading-container">
+      <template is="dom-if" if="[[!_isKeenChart]]">
+        <div class="loading-overlay" hidden$="[[!_loading]]">
+          <paper-progress indeterminate class="chart-loading"></paper-progress>
+        </div><!-- end div.loading-overlay -->
+      </template>
+      <div id="chartContainer" class="chart-container" hidden="[[_isLoadingAndIsNotKeenChart]]">
+        <div class="chart-heading-container sparkline-heading">
           <span class="chart-heading">[[heading]]</span>
         </div><!-- end div.chart-heading-container -->
         <div id="chartContent" class="chart-content">
@@ -179,14 +207,13 @@ data from Bloombox analytics streams.
       },
 
       observers: [
-        "_queryShouldChange(_booted, _client, environment, partner, location, collection, readKey, analysisType, dataType, groupBy, filters, timeframe, timeframeMode, timezone, interval)",
+        "_queryShouldChange(_booted, _client, environment, partner, location, collection, readKey, analysisType, dataType, groupBy, filters, timeframe, timeframeMode, timezone, interval, targetProperty)",
         "_scheduleRender(_booted, _data, _dimensions)"
       ],
 
       behaviors: [
         Polymer.IronResizableBehavior,
-        Polymer.BloomboxPieChartBehavior,
-        Polymer.BloomboxLineChartBehavior,
+        Polymer.BloomboxChartBehavior,
         Polymer.BloomboxTimeFormatBehavior
       ],
 
@@ -279,6 +306,27 @@ data from Bloombox analytics streams.
           notify: false,
           readOnly: true,
           reflectToAttribute: false
+        },
+
+        /**
+         * Reveal whether the underlying chart is rendered by
+         * Keen Dataviz (`true`), or D3 raw (`false`).
+         */
+        _isKeenChart: {
+          type: Boolean,
+          notify: true,
+          readOnly: false,
+          computed: "_computeIsKeenChart(chartType)"
+        },
+
+        /**
+         * Reveal whether we should use our own loading bar.
+         */
+        _isLoadingAndIsNotKeenChart: {
+          type: Boolean,
+          notify: true,
+          readOnly: false,
+          computed: "_computeIsLoadingAndIsNotKeenChart(_isKeenChart, _loading)"
         },
 
         /**
@@ -421,6 +469,18 @@ data from Bloombox analytics streams.
         },
 
         /**
+         * Describes the target property, or properties, to perform the
+         * analysis operation on and then chart results for. Certain
+         * `analysisType` values require at least one `targetProperty`.
+         */
+        targetProperty: {
+          type: Object,
+          notify: false,
+          value: null,
+          reflectToAttribute: true
+        },
+
+        /**
          * Kind of event data to display in this chart. Valid options
          * include:
          * - `actions`: Data about actions taken in the app.
@@ -442,7 +502,7 @@ data from Bloombox analytics streams.
          * matching value for the property named by `groupBy`.
          */
         groupBy: {
-          type: String,
+          type: Object,
           notify: false,
           value: null,
           reflectToAttribute: true
@@ -576,6 +636,25 @@ data from Bloombox analytics streams.
       },
 
       /**
+       * Compute whether the underlying chart is powered by Keen Dataviz
+       * or raw D3.
+       */
+      _computeIsKeenChart: function(chartType) {
+        if (chartType === "sparkline")
+          return false;
+        return true;
+      },
+
+      /**
+       * Compute whether the underlying chart is not powered by Keen Dataviz
+       * and we are also currently loading, in which case we should be
+       * showing our own builtin loader (by returning `false` here).
+       */
+      _computeIsLoadingAndIsNotKeenChart: function(isKeenChart, loading) {
+        return !isKeenChart && loading === true;
+      },
+
+      /**
        * Event handler for dimension changes.
        */
       _onResize: function(event) {
@@ -587,7 +666,7 @@ data from Bloombox analytics streams.
             height: height
           });
         } else {
-          this.async(this._onResize, 100);
+          this.async(this._onResize, 200);
         }
       },
 
@@ -599,13 +678,22 @@ data from Bloombox analytics streams.
         var that = this;
 
         if (this.autoRefresh) {
-          this.debounce('refresh-chart', function() {
-            console.log("Autorefreshing chart...");
-            this.refresh();
-            setTimeout(function() {
-              that._handleAutorefresh();
-            }, this.autoRefreshInterval);
-          }, 5000);
+          if (this.offsetParent !== null) {
+            this.debounce('refresh-chart', function() {
+              console.log("Autorefreshing chart...");
+              this.refresh();
+              setTimeout(function() {
+                that._handleAutorefresh();
+              }, this.autoRefreshInterval);
+            }, 5000);
+          } else {
+            // element is not visible - check again in 5 secs
+            this.debounce('refresh-chart-wait', function() {
+              setTimeout(function() {
+                that._handleAutorefresh();
+              }, this.autoRefreshInterval);
+            }, 5000);
+          }
         }
       },
 
@@ -644,7 +732,8 @@ data from Bloombox analytics streams.
                                    timeframe,
                                    timeframeMode,
                                    timezone,
-                                   interval) {
+                                   interval,
+                                   targetProperty) {
 
         var timeframeFormat = [timeframeMode, timeframe].join("_"),
             configPayload = {
@@ -652,7 +741,6 @@ data from Bloombox analytics streams.
               "timeframe": timeframeFormat
             },
             that = this,
-            height = this.height,
             heading = this.heading,
             chartType = this.chartType,
             colorset = this.colors;
@@ -668,19 +756,8 @@ data from Bloombox analytics streams.
             configPayload["interval"] = interval;
           if (filters && Array.isArray(filters) && filters.length > 0)
             configPayload["filters"] = filters;
-
-          if (chartType !== "sparkline" &&
-              !this._rendered) {
-            var chart = new Dataviz()
-              .el(this.$.chartContent)
-              .colors(colorset ? colorset : d3.scaleOrdinal(d3.schemeCategory20b))
-              .height(height)
-              .title(heading)
-              .type(chartType)
-              .prepare();
-
-            this._set_chart(chart);
-          }
+          if (targetProperty && targetProperty.length > 0)
+            configPayload["target_property"] = targetProperty;
 
           this._client.query(analysisType, configPayload)
                                       .then(function(response) {
@@ -727,14 +804,16 @@ data from Bloombox analytics streams.
       _scheduleRender: function(booted, data, dimensions) {
         var that = this;
         if (this._renderScheduled !== true) {
-          if (booted === true && dimensions) {
+          if (bloom.app.loading !== true && booted === true && dimensions) {
             this._set_renderScheduled(true);
             this.debounce("_renderChart", function() {
               that._renderChart();
               that._set_renderScheduled(false);
             }, 200);
           } else {
-            this.async(this._scheduleRender, 200);
+            this.async(function() {
+              that._scheduleRender(booted, data, dimensions);
+            }, 300);
           }
         }
         // there is already a render scheduled
@@ -753,13 +832,14 @@ data from Bloombox analytics streams.
             data = this._data,
             colorset = this.colors,
             svg = d3.select(this.$.chartData),
-            parseTime = d3.timeParse("%Y-%m-%dT%H:%M:%S.%L%Z"),
-            chartRenderer = this[chartType + "Chart"],
+            parseTime = d3.timeParse ? d3.timeParse("%Y-%m-%dT%H:%M:%S.%L%Z") : d3.time.format("%Y-%m-%dT%H:%M:%S.%L%Z"),
+            keenChart = this.chart,
+            chartRenderer = this.renderers[chartType],
             formatTime,
+            chart,
             settings = {};
 
-        if (this._rendered === true)
-          // clear existing chart
+        if (this._rendered === true && !this._isKeenChart)
           svg.selectAll("*").remove();
 
         // cannot proceed without chart renderer
@@ -770,8 +850,38 @@ data from Bloombox analytics streams.
         settings.height = height;
         settings.heading = heading;
 
-        if (colorset && typeof colorset === "string") {
+        if (colorset && typeof colorset === "string")
           this.customStyle["--bloombox-chart-foreground-color"] = colorset;
+
+        if (this._isKeenChart && !this._rendered) {
+          // initial prep of a keen chart
+          if (!this.targetProperty)
+            width = Math.floor(width - (width * (this._chartType === "pie" ? 0.1 : 0.3)));
+
+          chart = new Dataviz()
+            .el(this.$.chartContent)
+            .type(chartType)
+            .width(width)
+            .height(height)
+            .title(heading);
+
+          if (colorset)
+            chart.colors(colorset);
+
+          chart.prepare();
+          this._set_chart(chart);
+        } else if (this._isKeenChart && this._rendered) {
+          // re-render keen chart
+          if (this.chartType !== "metric") {
+            // if it's not a metric chart, or a sparkline, that is...
+            chart = this._chart;
+            if (!this.targetProperty)
+              width = Math.floor(width - (width * (this._chartType === "pie" ? 0.1 : 0.3)));
+            chart.attributes({
+              width: width
+            });
+            chart.render();
+          }
         }
 
         // if we have an interval, we need a valid formatter
@@ -819,11 +929,12 @@ data from Bloombox analytics streams.
                                 this.analysisType,
                                 this.dataType,
                                 this.groupBy,
+                                this.filters,
                                 this.timeframe,
                                 this.timeframeMode,
                                 this.timezone,
                                 this.interval,
-                                this.filters);
+                                this.targetProperty);
       },
 
       /**
