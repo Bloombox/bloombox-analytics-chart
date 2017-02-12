@@ -1,0 +1,104 @@
+
+<script type="text/javascript">
+  "use strict";
+
+  /**
+   * `Polymer.BloomboxChartBehavior` provides backing render
+   * logic for single- and multi-category line charts.
+   *
+   * @polymerBehavior
+   */
+  var BloomboxChartBehavior = Polymer.BloomboxChartBehavior = {
+    renderers: {
+      metric: {
+        render: function(svg, keenChart, chart, data, settings) {
+          keenChart.data({query: chart._query, result: data}).render();
+        }
+      },
+
+      sparkline: {
+        render: function(svg, keenChart, chart, data, settings) {
+          var timeParser = settings.timeParse,
+              timeFormatter = settings.timeFormat,
+              width = settings.width,
+              height = settings.height,
+              margin = {top: (typeof chart.heading === "string" ? 20 : 0), right: 0, bottom: 0, left: 0},
+              width = width > 240 ? 240 : width,
+              height = height > 50 ? 50 : height,
+              color = settings.colors ? (Array.isArray(settings.colors) ? settings.colors[0] : settings.colors) : "steelblue",
+              width = width - margin.left - margin.right,
+              height = height - margin.top - margin.bottom,  // subtract 20px for heading
+              el = svg
+                    .append("g")
+                    .attr("width", width)
+                    .attr("height", height)
+                    .attr("transform", "translate(" + margin.left + "," + margin.top + ")"),
+              x = (d3.scaleTime ? d3.scaleTime() : d3.time.scale())
+                    .range([0, width]),
+              y = (d3.scaleLinear ? d3.scaleLinear() : d3.scale.linear())
+                    .range([height, 0]),
+              xAxis,
+              yAxis,
+              line;
+
+          if (d3.axisBottom) {    
+            xAxis = d3.axisBottom()
+                      .scale(x)
+                      .tickFormat(timeFormatter());
+          } else {
+            
+          }
+          if (d3.axisLeft) {
+            yAxis = d3.axisLeft()
+                      .scale(y);
+          } else {
+
+          }
+
+          if (d3.line) {
+            line = d3.line()
+                     .curve(d3.curveBasis)
+                     .x(function(d) { return x(timeParser(d.timeframe.end)); })
+                     .y(function(d) { return y(d.value); });
+
+            // calculate domain of each axis
+            x.domain(d3.extent(data, function(d) { return timeParser(d.timeframe.start); }));
+            y.domain(d3.extent(data, function(d) { return d.value; }))
+          } else {
+            line = d3.svg.line()
+                         .interpolate("basis")
+                         .x(function(d) {
+                            return x(d3.time.format.iso.parse(d.timeframe.end));
+                          })
+                         .y(function(d) {
+                          return y(d.value);
+                         });
+
+            x.domain(d3.extent(data, function(d) { return d3.time.format.iso.parse(d.timeframe.start); }));
+            y.domain(d3.extent(data, function(d) { return d.value; }));
+          }
+
+          // map the sparkline
+          el.append("path")
+             .datum(data)
+             .style("fill", "none")
+             .style("stroke", color)
+             .attr("d", line);
+        }
+      },
+
+      spline: {
+        render: function(svg, keenChart, chart, data, settings) {
+          keenChart.data(data).render();
+        }
+      },
+
+      area: {
+        render: function(svg, keenChart, chart, data, settings) {
+          keenChart.data(data).render();
+        }
+      }
+    }
+  };
+
+</script>
