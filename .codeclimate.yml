@@ -21,3 +21,5 @@ ratings:
   - "**.scss"
 exclude_paths:
 - "gulpfile.js"
+- "demo/lib/*.css"
+- "demo/lib/*.js"
