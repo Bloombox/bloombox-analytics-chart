@@ -802,9 +802,11 @@ data from Bloombox analytics streams.
        * whether the DOM and dataset are ready.
        */
       _scheduleRender: function(booted, data, dimensions) {
-        var that = this;
+        var that = this,
+            bloom = window["bloom"],
+            loading = bloom ? bloom.app.loading : false;
         if (this._renderScheduled !== true) {
-          if (bloom.app.loading !== true && booted === true && dimensions) {
+          if (loading !== true && booted === true && dimensions) {
             this._set_renderScheduled(true);
             this.debounce("_renderChart", function() {
               that._renderChart();
