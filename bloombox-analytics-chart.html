@@ -685,14 +685,14 @@ data from Bloombox analytics streams.
               setTimeout(function() {
                 that._handleAutorefresh();
               }, this.autoRefreshInterval);
-            }, 5000);
+            }, 30000);
           } else {
             // element is not visible - check again in 5 secs
             this.debounce('refresh-chart-wait', function() {
               setTimeout(function() {
                 that._handleAutorefresh();
               }, this.autoRefreshInterval);
-            }, 5000);
+            }, 30000);
           }
         }
       },
