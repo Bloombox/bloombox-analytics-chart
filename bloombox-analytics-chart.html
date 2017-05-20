@@ -745,16 +745,24 @@ data from Bloombox analytics streams.
             colorset = this.colors;
 
         if (_booted === true) {
-          if (filters && Array.isArray(filters) && filters.length > 0)
+          var baseFilters = [{"operator":"eq","property_name":"partner","property_value":this.partner}];
+          if (filters && Array.isArray(filters) && filters.length > 0) {
+
+            var baseFilter;
+            for baseFilterKey in baseFilters {
+              baseFilter = baseFilters[baseFilterKey];
+              filters.unshift(baseFilter);
+            }
             configPayload["filters"] = filters;
+          } else {
+            configPayload["filters"] = baseFilters;
+          }
           if (groupBy && groupBy.length > 0)
             configPayload["group_by"] = groupBy;
           if (timezone && (typeof timezone === "number" || typeof timezone === "string"))
             configPayload["timezone"] = timezone;
           if (interval && typeof interval === "string")
             configPayload["interval"] = interval;
-          if (filters && Array.isArray(filters) && filters.length > 0)
-            configPayload["filters"] = filters;
           if (targetProperty && targetProperty.length > 0)
             configPayload["target_property"] = targetProperty;
 
