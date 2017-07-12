@@ -1,6 +1,6 @@
 {
   "name": "bloombox-analytics-chart",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Charts data from Bloombox analytics streams",
   "main": "index.html",
   "repository": {
