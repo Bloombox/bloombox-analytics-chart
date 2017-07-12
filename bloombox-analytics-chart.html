@@ -749,7 +749,7 @@ data from Bloombox analytics streams.
           if (filters && Array.isArray(filters) && filters.length > 0) {
 
             var baseFilter;
-            for baseFilterKey in baseFilters {
+            for (let baseFilterKey in baseFilters) {
               baseFilter = baseFilters[baseFilterKey];
               filters.unshift(baseFilter);
             }
