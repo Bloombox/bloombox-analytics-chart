@@ -20,7 +20,7 @@
   "main": "bloombox-analytics-chart.html",
   "dependencies": {
     "polymer": "Polymer/polymer#^1.7.0",
-    "bloombox-styles": "bloombox/bloombox-styles",
+    "bloombox-styles": "git@github.com:bloombox/bloombox-styles.git",
     "paper-progress": "PolymerElements/paper-progress#^1.0.0",
     "iron-resizable-behavior": "PolymerElements/iron-resizable-behavior#^1.0.5"
   },
